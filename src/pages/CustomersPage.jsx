@@ -46,6 +46,7 @@ const CustomersPage = () => {
   const [sortField, setSortField] = useState(null);
   const [sortOrder, setSortOrder] = useState('asc');
 
+  // Fetch all customers
   useEffect(() => {
     const fetchCustomers = async () => {
       const data = await getAllCustomers();
@@ -72,6 +73,7 @@ const CustomersPage = () => {
     setSearch('');
   };
 
+  // Sort customers by field
   const handleColumnSort = (field) => {
     let order = 'asc';
     if (sortField === field && sortOrder === 'asc') {
@@ -89,6 +91,7 @@ const CustomersPage = () => {
     });
   };
 
+  // Table column headers
   const columnHeaders = () => {
     return (
       <TableHead>
@@ -133,6 +136,7 @@ const CustomersPage = () => {
     );
   }
 
+  // Table rows
   const normalCustomersOutput = () => {
     return customers.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((customer, index) => (
       <TableRow key={index}>
@@ -147,6 +151,7 @@ const CustomersPage = () => {
     ))
   }
 
+  // Table rows with search filter
   const searchCustomersOutput = () => {
     return customers.filter((customer) => {
       return customer.firstname.toLowerCase().includes(searchInput.toLowerCase()) ||
@@ -174,8 +179,6 @@ const CustomersPage = () => {
     <Paper>
       <TableContainer className={classes.tableContainer}>
         <div style={{ display: 'flex', padding: '16px' }}>
-          
-
           <h3>Customers</h3>
           <TextField
             className={classes.searchInput}
