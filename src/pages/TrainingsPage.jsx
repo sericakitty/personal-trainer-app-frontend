@@ -35,6 +35,7 @@ const TrainingsPage = () => {
   const [sortField, setSortField] = useState(null);
   const [sortOrder, setSortOrder] = useState('asc');
 
+  // Fetch all trainings
   useEffect(() => {
     const fetchTrainings = async () => {
       const data = await getAllTrainings();
@@ -61,6 +62,7 @@ const TrainingsPage = () => {
     setSearch('');
   }
 
+  // Sort trainings by field
   const handleColumnSort = (field) => {
     let order = 'asc';
     if (sortField === field && sortOrder === 'asc') {
@@ -78,8 +80,8 @@ const TrainingsPage = () => {
     });
   };
 
+  // Format date object to DD.MM.YYYY HH:MM AM/PM
   const handleDateObject = (date) => {
-    // DD/MM/YYYY HH:MM AM/PM
     return dayjs(date).format('DD.MM.YYYY HH:mm A');
   }  
   

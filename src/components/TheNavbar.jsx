@@ -57,14 +57,16 @@ const useStyles = makeStyles((theme) => ({
   },
 }));
 
-export default function TheNavbar() {
+const TheNavbar = () => {
   const classes = useStyles();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
+  // This function toggles the drawer open and closed
   const handleDrawerToggle = () => {
     setDrawerOpen(prevDrawerOpen => !prevDrawerOpen);
   };
 
+  // This effect closes the drawer when clicking outside of it
   useEffect(() => {
     const closeDrawerOnClickOutside = (event) => {
       if (!document.getElementById('drawer').contains(event.target) && drawerOpen) {
@@ -85,7 +87,7 @@ export default function TheNavbar() {
         position="fixed"
         className={`${classes.appBar} ${drawerOpen ? classes.appBarShift : ''}`}
       >
-        <Toolbar>
+        <Toolbar> 
           <IconButton
             color="inherit"
             aria-label="open drawer"
@@ -144,3 +146,4 @@ export default function TheNavbar() {
   );
 }
 
+export default TheNavbar;
