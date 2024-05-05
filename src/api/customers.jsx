@@ -28,6 +28,22 @@ export const addNewCustomer = async (customer) => {
   }
 }
 
+export const updateCustomer = async (id, newCustomer) => {
+  const config = {
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  }
+  try {
+    const response = await axiosInstance.put(`/api/customers/${id}`, newCustomer, config);
+    return response.status === 200;
+  }
+  catch (error) {
+    return error;
+  }
+}
+
+
 export const deleteCustomer = async (id) => {
   try {
     const response = await axiosInstance.delete(`/api/customers/${id}`);
