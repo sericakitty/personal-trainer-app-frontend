@@ -21,3 +21,13 @@ export const addNewTraining = async (training) => {
     return error;
   }
 }
+
+export const deleteTraining = async (id) => {
+  try {
+    const response = await axiosInstance.delete(`/api/trainings/${id}`);
+    return response.status === 200;
+  }
+  catch (error) {
+    return error;
+  }
+}
