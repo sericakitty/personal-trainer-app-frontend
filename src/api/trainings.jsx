@@ -11,3 +11,13 @@ export const getAllTrainings = async () => {
     return error;
   }
 }
+
+export const addNewTraining = async (training) => {
+  try {
+    const response = await axiosInstance.post('/api/trainings', training);
+    return response.status === 201;
+  }
+  catch (error) {
+    return error;
+  }
+}
