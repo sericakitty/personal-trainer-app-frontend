@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
-import { getAllTrainings } from '../api/trainings';
+import { getAllTrainings, deleteTraining } from '@/api/trainings';
 import { makeStyles } from '@material-ui/core/styles';
 import { Paper, TableContainer, TextField, InputAdornment, IconButton, Table, TableBody, TableCell, TableHead, TableRow, TablePagination } from '@material-ui/core';
 import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
 import ArrowDropUpIcon from '@mui/icons-material/ArrowDropUp';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
+import DeleteIcon from '@mui/icons-material/Delete';
 import dayjs from 'dayjs';
+import Alert from '@mui/material/Alert';
 
 const useStyles = makeStyles({
   table: {
@@ -23,7 +25,23 @@ const useStyles = makeStyles({
     padding: '0px',
     fontSize: '14px',
     color: 'black',
+    '&:focus': { // Remove hover effect
+      outline: 'none',
+      border: 'none',
+    },
+    '&:hover': { // Remove hover effect
+      backgroundColor: 'transparent',
+    },
   },
+  actionButton: {
+    '&:focus': { // Remove hover effect
+      outline: 'none',
+      border: 'none',
+    },
+  },
+  actionIcon: {
+    color: 'black',
+  }
 });
 
 const TrainingsPage = () => {
@@ -35,32 +53,30 @@ const TrainingsPage = () => {
   const [sortField, setSortField] = useState(null);
   const [sortOrder, setSortOrder] = useState('asc');
 
+  // Alert state for showing success or error messages
+  const [alert, setAlert] = useState({ show: false, message: '', severity: '' });
+
   // Fetch all trainings
   useEffect(() => {
     const fetchTrainings = async () => {
       const data = await getAllTrainings();
-      setTrainings(data);
+      if (data) {
+        setTrainings(data);
+      }
     };
-
     fetchTrainings();
   }, []);
 
-  const handleChangePage = (event, newPage) => {
-    setPage(newPage);
-  };
+  const handleChangePage = (event, newPage) => setPage(newPage);
 
   const handleChangeRowsPerPage = event => {
     setRowsPerPage(+event.target.value);
     setPage(0);
   };
 
-  const handleSearch = (event) => {
-    setSearch(event.target.value);
-  }
+  const handleSearch = (event) => setSearch(event.target.value);
 
-  const handleClearSearch = () => {
-    setSearch('');
-  }
+  const handleClearSearch = () => setSearch('');
 
   // Sort trainings by field
   const handleColumnSort = (field) => {
@@ -80,52 +96,93 @@ const TrainingsPage = () => {
     });
   };
 
+  const showAlert = (message, severity) => {
+    setAlert({ show: true, message, severity });
+    setTimeout(() => {
+      setAlert({ show: false, message: '', severity: '' });
+    }, 5000);
+  }
+
   // Format date object to DD.MM.YYYY HH:MM AM/PM
   const handleDateObject = (date) => {
     return dayjs(date).format('DD.MM.YYYY HH:mm A');
   }  
+
+  // Delete training by ID
+  const handleDeleteTraining = async (training) => {
+    if (!window.confirm(`Are you sure you want to delete ${training.activity} training?`)) {
+      return;
+    }
+    const response = await deleteTraining(training.id);
+    if (response) {
+      const updatedTrainings = trainings.filter((t) => t.id !== training.id);
+      setTrainings(updatedTrainings);
+
+      // Check if page is out of bounds, if so, set page to previous page
+      const numberOfPages = Math.ceil(updatedTrainings.length / rowsPerPage);
+      if (page >= numberOfPages && page > 0) {
+        setPage(numberOfPages - 1);  
+      }
+
+      showAlert('Training deleted successfully', 'success');
+    } else {
+      showAlert('Failed to delete training', 'error');
+    }
+  }
   
-  const columnHeaders = () => {
-    return (
+  const columnHeaders = () => (
       <TableHead>
         <TableRow>
-          <TableCell onClick={() => handleColumnSort('activity')}>
-            <IconButton className={classes.sortingHeader}>
+          <TableCell>
+            Actions
+          </TableCell>
+          <TableCell>
+            <IconButton className={classes.sortingHeader} disableRipple onClick={() => handleColumnSort('activity')}>
               Activity{sortField === 'activity' && sortOrder === 'asc' ? <ArrowDropUpIcon /> : <ArrowDropDownIcon />}
             </IconButton>
           </TableCell>
-          <TableCell onClick={() => handleColumnSort('date')}>
-            <IconButton className={classes.sortingHeader}>
+          <TableCell>
+            <IconButton className={classes.sortingHeader} disableRipple onClick={() => handleColumnSort('date')}>
               Date{sortField === 'date' && sortOrder === 'asc' ? <ArrowDropUpIcon /> : <ArrowDropDownIcon />}
             </IconButton>
           </TableCell>
-          <TableCell onClick={() => handleColumnSort('duration')}>
-            <IconButton className={classes.sortingHeader}>
+          <TableCell>
+            <IconButton className={classes.sortingHeader} disableRipple onClick={() => handleColumnSort('duration')}>
               Duration (min){sortField === 'duration' && sortOrder === 'asc' ? <ArrowDropUpIcon /> : <ArrowDropDownIcon />}
             </IconButton>
           </TableCell>
-          <TableCell onClick={() => handleColumnSort('customer')}>
-            <IconButton className={classes.sortingHeader}>
+          <TableCell>
+            <IconButton className={classes.sortingHeader} disableRipple onClick={() => handleColumnSort('customer')}>
               Customer{sortField === 'customer' && sortOrder === 'asc' ? <ArrowDropUpIcon /> : <ArrowDropDownIcon />}
             </IconButton>
           </TableCell>
         </TableRow>
       </TableHead>
     )
-  }
 
-  const normalTrainingsOutput = () => {
+  const TrainingsContent = (training, index) => (
+    <TableRow key={index}>
+      <TableCell>
+        <IconButton onClick={() => handleDeleteTraining(training)} className={classes.actionButton}>
+          <DeleteIcon className={classes.actionIcon} />
+        </IconButton>
+      </TableCell>
+      <TableCell>{training.activity}</TableCell>
+      <TableCell>{handleDateObject(training.date)}</TableCell>
+      <TableCell>{training.duration}</TableCell>
+      <TableCell>{training.customer.firstname} {training.customer.lastname}</TableCell>
+    </TableRow>
+  )
+  
+  // Display trainings
+  const normalTrainingsContent = () => {
     return trainings.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((training, index) => (
-      <TableRow key={index}>
-        <TableCell>{training.activity}</TableCell>
-        <TableCell>{handleDateObject(training.date)}</TableCell>
-        <TableCell>{training.duration}</TableCell>
-        <TableCell>{training.customer.firstname} {training.customer.lastname}</TableCell>
-      </TableRow>
+      TrainingsContent(training, index)
     ))
   }
 
-  const searchTrainingsOutput = () => {
+  // Display search results
+  const searchTrainingsContent = () => {
     return trainings.filter((training) => {
       return training.activity.toLowerCase().includes(searchInput.toLowerCase()) ||
         training.date.toLowerCase().includes(searchInput.toLowerCase()) ||
@@ -133,17 +190,13 @@ const TrainingsPage = () => {
         training.customer.firstname.toLowerCase().includes(searchInput.toLowerCase()) ||
         training.customer.lastname.toLowerCase().includes(searchInput.toLowerCase());
     }).slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((training, index) => (
-      <TableRow key={index}>
-        <TableCell>{training.activity}</TableCell>
-        <TableCell>{handleDateObject(training.date)}</TableCell>
-        <TableCell>{training.duration}</TableCell>
-        <TableCell>{training.customer.firstname} {training.customer.lastname}</TableCell>
-      </TableRow>
+      TrainingsContent(training, index)
     ))
   }
 
   return (
     <Paper>
+      {alert.show && <Alert severity={alert.severity}>{alert.message}</Alert>}
       <TableContainer className={classes.tableContainer}>
         <div style={{ display: 'flex', padding: '16px' }}>
           <h3>Trainings</h3>
@@ -173,12 +226,12 @@ const TrainingsPage = () => {
       <Table className={classes.table} aria-label="simple table">
           {columnHeaders()}
           <TableBody>
-            {searchInput === '' ? normalTrainingsOutput() : searchTrainingsOutput()}
+            {searchInput === '' ? normalTrainingsContent() : searchTrainingsContent()}
           </TableBody>
         </Table>
       </TableContainer>
       <TablePagination
-        rowsPerPageOptions={[5, 10, 25]}
+        rowsPerPageOptions={[5, 10, 25, 50, 100]}
         component="div"
         count={trainings.length}
         rowsPerPage={rowsPerPage}

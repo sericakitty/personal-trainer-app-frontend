@@ -11,3 +11,23 @@ export const getAllTrainings = async () => {
     return error;
   }
 }
+
+export const addNewTraining = async (training) => {
+  try {
+    const response = await axiosInstance.post('/api/trainings', training);
+    return response.status === 201;
+  }
+  catch (error) {
+    return error;
+  }
+}
+
+export const deleteTraining = async (id) => {
+  try {
+    const response = await axiosInstance.delete(`/api/trainings/${id}`);
+    return response.status === 200;
+  }
+  catch (error) {
+    return error;
+  }
+}
