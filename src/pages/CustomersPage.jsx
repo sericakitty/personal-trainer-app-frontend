@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getAllCustomers, addNewCustomer, updateCustomer, deleteCustomer } from "@/api/customers";
+import { addNewTraining } from "@/api/trainings";
 import { makeStyles } from '@material-ui/core/styles';
 import { Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, TextField, IconButton, InputAdornment, Dialog, DialogTitle, DialogContent, Grid } from '@material-ui/core';
 import SearchIcon from '@mui/icons-material/Search';
@@ -9,6 +10,8 @@ import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import AddBoxIcon from '@mui/icons-material/AddBox';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import dayjs from 'dayjs';
+import Alert from '@mui/material/Alert';
 
 const useStyles = makeStyles({
   table: {
@@ -58,7 +61,22 @@ const useStyles = makeStyles({
   },
   actionIcon: {
     color: 'black',
-  }
+  },
+  addtrainingButton: {
+    color: 'blue',
+    fontSize: '12px !important',
+  },
+  actionButton: {
+    '&:focus': { // Remove hover effect
+      outline: 'none',
+      border: 'none',
+    },
+  },
+  dateField: {
+    '& label': {
+      marginBottom: '20px !important',
+    },
+  },
 });
 
 const CustomersPage = () => {
@@ -71,10 +89,11 @@ const CustomersPage = () => {
   const [sortOrder, setSortOrder] = useState('asc');
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  // Dialog state, if true, the edit dialog will be opened
-  const [isEditMode, setIsEditMode] = useState(false);
-  // Current customer state for editing
+  // Current customer for editing
   const [currentCustomer, setCurrentCustomer] = useState(null);
+
+  // Dialog mode for adding, editing and training
+  const [dialogMode, setDialogMode] = useState(null);
 
   // New customer state for adding or updating
   const [newCustomer, setNewCustomer] = useState({
@@ -87,6 +106,16 @@ const CustomersPage = () => {
     city: ''
   });
 
+  const [newTraining, setNewTraining] = useState({
+    date: '',
+    activity: '',
+    duration: '',
+    customer: ''
+  });
+
+  // Alert state for showing success or error messages
+  const [alert, setAlert] = useState({ show: false, message: '', severity: '' });
+
   const handleGetAllCustomers = async () => {
     try {
       const data = await getAllCustomers();
@@ -98,7 +127,6 @@ const CustomersPage = () => {
       }
     } catch (error) {
       console.error('Failed to fetch customers:', error);
-      alert('Failed to load customer data');
     }
   }
 
@@ -111,22 +139,31 @@ const CustomersPage = () => {
     fetchCustomers();
   }, []);
 
-  const handleChangePage = (event, newPage) => {
-    setPage(newPage);
-  };
+  const handleChangePage = (event, newPage) => setPage(newPage);
+
 
   const handleChangeRowsPerPage = event => {
     setRowsPerPage(+event.target.value);
     setPage(0);
   };
 
-  const handleSearchInput = (event) => {
-    setSearch(event.target.value);
-  };
+  const handleSearchInput = (event) => setSearch(event.target.value);
 
-  const handleClearSearchInput = () => {
-    setSearch('');
-  };
+
+  const handleClearSearchInput = () => setSearch('');
+
+  // Format date for input field
+  const formatDateForInput = (dateTime) => {
+    return dayjs(dateTime).format('YYYY-MM-DDTHH:mm:ss.SSS');
+  }
+
+  // display alert message
+  const showAlert = (message, severity) => {
+    setAlert({ show: true, message: message, severity: severity });
+    setTimeout(() => {
+      setAlert({ show: false, message: '', severity: '' });
+    }, 5000);
+  }
 
   // Sort customers by field
   const handleColumnSort = (field) => {
@@ -157,10 +194,11 @@ const CustomersPage = () => {
 
     if (response) {
       await handleGetAllCustomers();
+      showAlert('Customer added successfully', 'success');
     } else {
-      alert('Failed to add new customer');
+      showAlert('Failed to add customer', 'error');
     }
-    resetDialog();
+    handleDialogClose();
   }
 
   // Update an existing customer
@@ -174,16 +212,35 @@ const CustomersPage = () => {
 
     const response = await updateCustomer(currentCustomer.id, newCustomer);
     if (response) {
+      showAlert('Customer updated successfully', 'success');
       await handleGetAllCustomers();
     } else {
-      alert('Failed to update customer');
+      showAlert('Failed to update customer', 'error');
     }
-    resetDialog();
+    handleDialogClose();
   }
 
-  // Reset dialog fields and errors
-  const resetDialog = () => {
+
+  // Handle opening the dialog with the specified mode and customer
+  const handleDialogOpen = (mode, customer = null) => {
+    setDialogOpen(true);
+    setDialogMode(mode);
+    if ((mode === 'addCustomer' || mode === 'editCustomer') && customer) {
+      setNewCustomer(customer);
+      setCurrentCustomer(customer);
+    }
+  };
+
+  // Close the dialog and reset its state
+  const handleDialogClose = () => {
+    setDialogMode(null);
     setDialogOpen(false);
+    setCurrentCustomer(null);
+    resetDialog();
+  };
+
+  // Reset fields for customer and training dialogs
+  const resetDialog = () => {
     setNewCustomer({
       firstname: '',
       lastname: '',
@@ -193,28 +250,15 @@ const CustomersPage = () => {
       postcode: '',
       city: ''
     });
-  }
-
-  const handleDialogClose = () => {
-    setDialogOpen(false);
-    setCurrentCustomer(null);
-    setIsEditMode(false);
+    setNewTraining({
+      date: '',
+      activity: '',
+      duration: '',
+      customer: ''
+    });
   };
 
-
-  const handleDialogAddCustomerOpen = () => {
-    setIsEditMode(false);
-    setDialogOpen(true);
-  }
-
-  const handleDialogEditCustomerOpen = (customer) => {
-    setIsEditMode(true);
-    setCurrentCustomer(customer);
-    setNewCustomer(customer);
-    setDialogOpen(true);
-  }
-
-
+  // Handle textfield change in the dialog
   const handleDialogTextfieldChange = (e) => {
     const { id, value } = e.target;
     setNewCustomer(prevState => ({
@@ -238,83 +282,105 @@ const CustomersPage = () => {
         if (page >= numberOfPages && page > 0) {
           setPage(numberOfPages - 1);  // update the page number if the current page is greater than the number of pages
         }
+
+        showAlert('Customer deleted successfully', 'success');
       } else {
-        alert('Failed to delete customer');
+        showAlert('Failed to delete customer', 'error');
       }
     }
   }
 
-  // Table column headers
-  const columnHeadersContent = () => {
-    return (
-      <TableHead>
-        <TableRow>
-          <TableCell>
-            Actions
-          </TableCell>
-          <TableCell>
-            <IconButton
-              className={classes.sortingHeader} disableRipple onClick={() => handleColumnSort('firstname')}>
-              First name{sortField === 'firstname' && sortOrder === 'asc' ? <ArrowDropUpIcon /> : <ArrowDropDownIcon />}
-            </IconButton>
-          </TableCell>
-          <TableCell>
-            <IconButton className={classes.sortingHeader} disableRipple onClick={() => handleColumnSort('lastname')}>
-              Last name{sortField === 'lastname' && sortOrder === 'asc' ? <ArrowDropUpIcon /> : <ArrowDropDownIcon />}
-            </IconButton>
-          </TableCell>
-          <TableCell>
-            <IconButton className={classes.sortingHeader} disableRipple onClick={() => handleColumnSort('email')}>
-              Email{sortField === 'email' && sortOrder === 'asc' ? <ArrowDropUpIcon /> : <ArrowDropDownIcon />}
-            </IconButton>
-          </TableCell>
-          <TableCell>
-            <IconButton className={classes.sortingHeader} disableRipple onClick={() => handleColumnSort('phone')}>
-              Phone{sortField === 'phone' && sortOrder === 'asc' ? <ArrowDropUpIcon /> : <ArrowDropDownIcon />}
-            </IconButton>
-          </TableCell>
-          <TableCell>
-            <IconButton className={classes.sortingHeader} disableRipple onClick={() => handleColumnSort('streetaddress')}>
-              Street address{sortField === 'streetaddress' && sortOrder === 'asc' ? <ArrowDropUpIcon /> : <ArrowDropDownIcon />}
-            </IconButton>
-          </TableCell>
-          <TableCell>
-            <IconButton className={classes.sortingHeader} disableRipple onClick={() => handleColumnSort('postcode')}>
-              Postcode{sortField === 'postcode' && sortOrder === 'asc' ? <ArrowDropUpIcon /> : <ArrowDropDownIcon />}
-            </IconButton>
-          </TableCell>
-          <TableCell>
-            <IconButton className={classes.sortingHeader} disableRipple onClick={() => handleColumnSort('city')}>
-              City{sortField === 'city' && sortOrder === 'asc' ? <ArrowDropUpIcon /> : <ArrowDropDownIcon />}
-            </IconButton>
-          </TableCell>
-        </TableRow>
-      </TableHead>
-    );
+  // Handle adding a new training
+  const handleAddTraining = async (event) => {
+    event.preventDefault();
+    if (newTraining.date === '' || newTraining.activity === '' || newTraining.duration === '' || newTraining.customer === '') {
+      alert('Please fill in all fields');
+      return;
+    }
+
+    const response = await addNewTraining(newTraining);
+    if (response) {
+      showAlert('Training added successfully', 'success');
+    } else {
+      showAlert('Failed to add training', 'error');
+    }
+    handleDialogClose();
   }
 
-  // Table row content
-  const customerContent = (customer, index) => {
-    return (
-      <TableRow key={index}>
+
+  // Table column headers
+  const columnHeadersContent = () => (
+    <TableHead>
+      <TableRow>
         <TableCell>
-          <IconButton onClick={() => handleDeleteCustomer(customer)}>
-            <DeleteIcon className={classes.actionIcon} />
-          </IconButton>
-          <IconButton onClick={() => handleDialogEditCustomerOpen(customer)}>
-            <EditIcon className={classes.actionIcon} />
+          Actions
+        </TableCell>
+        <TableCell>
+          <IconButton
+            className={classes.sortingHeader} disableRipple onClick={() => handleColumnSort('firstname')}>
+            First name{sortField === 'firstname' && sortOrder === 'asc' ? <ArrowDropUpIcon /> : <ArrowDropDownIcon />}
           </IconButton>
         </TableCell>
-        <TableCell>{customer.firstname}</TableCell>
-        <TableCell>{customer.lastname}</TableCell>
-        <TableCell>{customer.email}</TableCell>
-        <TableCell>{customer.phone}</TableCell>
-        <TableCell>{customer.streetaddress}</TableCell>
-        <TableCell>{customer.postcode}</TableCell>
-        <TableCell>{customer.city}</TableCell>
+        <TableCell>
+          <IconButton className={classes.sortingHeader} disableRipple onClick={() => handleColumnSort('lastname')}>
+            Last name{sortField === 'lastname' && sortOrder === 'asc' ? <ArrowDropUpIcon /> : <ArrowDropDownIcon />}
+          </IconButton>
+        </TableCell>
+        <TableCell>
+          <IconButton className={classes.sortingHeader} disableRipple onClick={() => handleColumnSort('email')}>
+            Email{sortField === 'email' && sortOrder === 'asc' ? <ArrowDropUpIcon /> : <ArrowDropDownIcon />}
+          </IconButton>
+        </TableCell>
+        <TableCell>
+          <IconButton className={classes.sortingHeader} disableRipple onClick={() => handleColumnSort('phone')}>
+            Phone{sortField === 'phone' && sortOrder === 'asc' ? <ArrowDropUpIcon /> : <ArrowDropDownIcon />}
+          </IconButton>
+        </TableCell>
+        <TableCell>
+          <IconButton className={classes.sortingHeader} disableRipple onClick={() => handleColumnSort('streetaddress')}>
+            Street address{sortField === 'streetaddress' && sortOrder === 'asc' ? <ArrowDropUpIcon /> : <ArrowDropDownIcon />}
+          </IconButton>
+        </TableCell>
+        <TableCell>
+          <IconButton className={classes.sortingHeader} disableRipple onClick={() => handleColumnSort('postcode')}>
+            Postcode{sortField === 'postcode' && sortOrder === 'asc' ? <ArrowDropUpIcon /> : <ArrowDropDownIcon />}
+          </IconButton>
+        </TableCell>
+        <TableCell>
+          <IconButton className={classes.sortingHeader} disableRipple onClick={() => handleColumnSort('city')}>
+            City{sortField === 'city' && sortOrder === 'asc' ? <ArrowDropUpIcon /> : <ArrowDropDownIcon />}
+          </IconButton>
+        </TableCell>
       </TableRow>
-    );
-  }
+    </TableHead>
+  );
+
+
+
+  // Table row content
+  const customerContent = (customer, index) => (
+    <TableRow key={index}>
+      <TableCell>
+        <IconButton onClick={() => handleDeleteCustomer(customer)} className={classes.actionButton}>
+          <DeleteIcon className={classes.actionIcon} />
+        </IconButton>
+        <IconButton onClick={() => handleDialogOpen('editCustomer', customer)} className={classes.actionButton}>
+          <EditIcon className={classes.actionIcon} />
+        </IconButton>
+        <IconButton className={classes.actionButton && classes.addtrainingButton} onClick={() => handleDialogOpen('addTraining', customer)}>
+          ADD TRAINING
+        </IconButton>
+      </TableCell>
+      <TableCell>{customer.firstname}</TableCell>
+      <TableCell>{customer.lastname}</TableCell>
+      <TableCell>{customer.email}</TableCell>
+      <TableCell>{customer.phone}</TableCell>
+      <TableCell>{customer.streetaddress}</TableCell>
+      <TableCell>{customer.postcode}</TableCell>
+      <TableCell>{customer.city}</TableCell>
+    </TableRow>
+  );
+
 
   // Table rows without search filter
   const normalCustomersContent = () => {
@@ -406,9 +472,54 @@ const CustomersPage = () => {
     </Dialog>
   );
 
+  // Dialog content for adding a new training
+  const dialogTrainingContent = () => (
+    <Dialog open={dialogOpen} onClose={handleDialogClose}>
+      <form onSubmit={handleAddTraining}>
+        <DialogTitle>Add New Training</DialogTitle>
+        <DialogContent>
+          <Grid container direction="column" spacing={2}>
+            {Object.keys(newTraining).filter(field => field !== 'customer').map((field) => (
+              <Grid item key={field} className={classes.dialogTextFieldContainer}>
+                <TextField
+                  id={field}
+                  label={field.replace(/([A-Z])/g, ' $1').replace(/^\w/, (c) => c.toUpperCase())}
+                  type={field === 'date' ? 'datetime-local' : 'text'}
+                  required
+                  value={newTraining[field]}
+                  onChange={(e) => {
+                    setNewTraining(prevState => ({
+                      ...prevState,
+                      [field]: field === 'date' ? formatDateForInput(e.target.value) : e.target.value,
+                      customer: currentCustomer._links.self.href
+                    }));
+                  }}
+                  className={field === 'date' ? classes.dateField : ""}
+                  InputLabelProps={{ shrink: true, required: true }}
+                  fullWidth
+                />
+              </Grid>
+            ))}
+          </Grid>
+          <div className={classes.dialogButtons}>
+            <IconButton className={classes.dialogCloseButton} onClick={handleDialogClose}>
+              Close
+            </IconButton>
+            <IconButton className={classes.addCustomerButton} type="submit">
+              Add Training
+            </IconButton>
+          </div>
+        </DialogContent>
+      </form>
+    </Dialog>
+  );
+
 
   return (
     <Paper>
+      {
+        alert.show && <Alert severity={alert.severity}>{alert.message}</Alert>
+      }
       <TableContainer className={classes.tableContainer}>
         <div style={{ display: 'flex', padding: '16px' }}>
           <h3>Customers</h3>
@@ -434,10 +545,10 @@ const CustomersPage = () => {
               ),
             }}
           />
-          <IconButton className={classes.diaglogAddCustomerButton} onClick={() => handleDialogAddCustomerOpen()}>
+          <IconButton className={classes.diaglogAddCustomerButton} onClick={() => handleDialogOpen('addCustomer')}>
             <AddBoxIcon />
           </IconButton>
-          {isEditMode ? dialogEditCustomerContent() : dialogAddCustomerContent()}
+          {dialogMode === 'addCustomer' && dialogAddCustomerContent() || dialogMode === 'editCustomer' && dialogEditCustomerContent() || dialogMode === 'addTraining' && dialogTrainingContent()}
         </div>
         <Table className={classes.table} aria-label="simple table">
           {columnHeadersContent()}
