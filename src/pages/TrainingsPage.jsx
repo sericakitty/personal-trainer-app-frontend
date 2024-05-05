@@ -8,6 +8,7 @@ import ArrowDropUpIcon from '@mui/icons-material/ArrowDropUp';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import DeleteIcon from '@mui/icons-material/Delete';
 import dayjs from 'dayjs';
+import Alert from '@mui/material/Alert';
 
 const useStyles = makeStyles({
   table: {
@@ -52,6 +53,9 @@ const TrainingsPage = () => {
   const [sortField, setSortField] = useState(null);
   const [sortOrder, setSortOrder] = useState('asc');
 
+  // Alert state for showing success or error messages
+  const [alert, setAlert] = useState({ show: false, message: '', severity: '' });
+
   // Fetch all trainings
   useEffect(() => {
     const fetchTrainings = async () => {
@@ -92,6 +96,13 @@ const TrainingsPage = () => {
     });
   };
 
+  const showAlert = (message, severity) => {
+    setAlert({ show: true, message, severity });
+    setTimeout(() => {
+      setAlert({ show: false, message: '', severity: '' });
+    }, 5000);
+  }
+
   // Format date object to DD.MM.YYYY HH:MM AM/PM
   const handleDateObject = (date) => {
     return dayjs(date).format('DD.MM.YYYY HH:mm A');
@@ -112,6 +123,10 @@ const TrainingsPage = () => {
       if (page >= numberOfPages && page > 0) {
         setPage(numberOfPages - 1);  
       }
+
+      showAlert('Training deleted successfully', 'success');
+    } else {
+      showAlert('Failed to delete training', 'error');
     }
   }
   
@@ -181,6 +196,7 @@ const TrainingsPage = () => {
 
   return (
     <Paper>
+      {alert.show && <Alert severity={alert.severity}>{alert.message}</Alert>}
       <TableContainer className={classes.tableContainer}>
         <div style={{ display: 'flex', padding: '16px' }}>
           <h3>Trainings</h3>
