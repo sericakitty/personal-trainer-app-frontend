@@ -13,5 +13,21 @@ export const getAllCustomers = async () => {
   }
 }
 
+export const addNewCustomer = async (customer) => {
+  const config = {
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  }
+  try {
+    const response = await axiosInstance.post('/api/customers', customer, config);
+    if (response.status === 201) {
+      return response.data;
+    }
+  }
+  catch (error) {
+    return error;
+  }
+}
 
 
