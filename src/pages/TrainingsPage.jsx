@@ -8,7 +8,10 @@ import ArrowDropUpIcon from '@mui/icons-material/ArrowDropUp';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import DeleteIcon from '@mui/icons-material/Delete';
 import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
 import Alert from '@mui/material/Alert';
+
+dayjs.extend(utc);
 
 const useStyles = makeStyles({
   table: {
@@ -105,7 +108,8 @@ const TrainingsPage = () => {
 
   // Format date object to DD.MM.YYYY HH:MM AM/PM
   const handleDateObject = (date) => {
-    return dayjs(date).format('DD.MM.YYYY HH:mm A');
+    // display date in UTC as it is stored in the database
+    return dayjs.utc(date).format('DD.MM.YYYY HH:mm A');
   }  
 
   // Delete training by ID
