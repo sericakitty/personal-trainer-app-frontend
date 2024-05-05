@@ -21,13 +21,20 @@ export const addNewCustomer = async (customer) => {
   }
   try {
     const response = await axiosInstance.post('/api/customers', customer, config);
-    if (response.status === 201) {
-      return response.data;
-    }
+    return response.status === 201;
   }
   catch (error) {
     return error;
   }
 }
 
+export const deleteCustomer = async (id) => {
+  try {
+    const response = await axiosInstance.delete(`/api/customers/${id}`);
+    return response.status === 200;
+  }
+  catch (error) {
+    return error;
+  }
+}
 
