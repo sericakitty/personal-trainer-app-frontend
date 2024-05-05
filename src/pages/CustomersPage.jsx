@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getAllCustomers, addNewCustomer, deleteCustomer } from "@/api/customers";
+import { getAllCustomers, addNewCustomer, updateCustomer, deleteCustomer } from "@/api/customers";
 import { makeStyles } from '@material-ui/core/styles';
 import { Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, TextField, IconButton, InputAdornment, Dialog, DialogTitle, DialogContent, Grid } from '@material-ui/core';
 import SearchIcon from '@mui/icons-material/Search';
@@ -8,6 +8,7 @@ import ArrowDropUpIcon from '@mui/icons-material/ArrowDropUp';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import AddBoxIcon from '@mui/icons-material/AddBox';
 import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
 
 const useStyles = makeStyles({
   table: {
@@ -55,7 +56,7 @@ const useStyles = makeStyles({
   dialogTextFieldContainer: {
     marginTop: 12, // Adjust the top margin for spacing between text fields
   },
-  deleteIcon: {
+  actionIcon: {
     color: 'black',
   }
 });
@@ -70,6 +71,12 @@ const CustomersPage = () => {
   const [sortOrder, setSortOrder] = useState('asc');
   const [dialogOpen, setDialogOpen] = useState(false);
 
+  // Dialog state, if true, the edit dialog will be opened
+  const [isEditMode, setIsEditMode] = useState(false);
+  // Current customer state for editing
+  const [currentCustomer, setCurrentCustomer] = useState(null);
+
+  // New customer state for adding or updating
   const [newCustomer, setNewCustomer] = useState({
     firstname: '',
     lastname: '',
@@ -139,21 +146,40 @@ const CustomersPage = () => {
     });
   };
 
-  // Handle adding a new customer
+  // Add a new customer
   const handleAddCustomer = async (event) => {
     event.preventDefault();
-
-    // Validate new customer fields
-    if (newCustomer.firstname !== '' && newCustomer.lastname !== '' && newCustomer.email !== '' && newCustomer.phone !== '' && newCustomer.streetaddress !== '' && newCustomer.postcode !== '' && newCustomer.city !== '') {
-      const response = await addNewCustomer(newCustomer);
-      if (response) { 
-        resetDialog();
-        await handleGetAllCustomers(); // Fetch all customers after adding a new customer
-      } else {
-        alert('Failed to add new customer');
-      }
+    if (newCustomer.firstname === '' || newCustomer.lastname === '' || newCustomer.email === '' || newCustomer.phone === '' || newCustomer.streetaddress === '' || newCustomer.postcode === '' || newCustomer.city === '') {
+      alert('Please fill in all fields');
+      return;
     }
-  };
+    const response = await addNewCustomer(newCustomer);
+
+    if (response) {
+      await handleGetAllCustomers();
+    } else {
+      alert('Failed to add new customer');
+    }
+    resetDialog();
+  }
+
+  // Update an existing customer
+  const handleUpdateCustomer = async (event) => {
+    event.preventDefault();
+
+    if (newCustomer.firstname === '' || newCustomer.lastname === '' || newCustomer.email === '' || newCustomer.phone === '' || newCustomer.streetaddress === '' || newCustomer.postcode === '' || newCustomer.city === '') {
+      alert('Please fill in all fields');
+      return;
+    }
+
+    const response = await updateCustomer(currentCustomer.id, newCustomer);
+    if (response) {
+      await handleGetAllCustomers();
+    } else {
+      alert('Failed to update customer');
+    }
+    resetDialog();
+  }
 
   // Reset dialog fields and errors
   const resetDialog = () => {
@@ -169,12 +195,22 @@ const CustomersPage = () => {
     });
   }
 
-
   const handleDialogClose = () => {
     setDialogOpen(false);
+    setCurrentCustomer(null);
+    setIsEditMode(false);
+  };
+
+
+  const handleDialogAddCustomerOpen = () => {
+    setIsEditMode(false);
+    setDialogOpen(true);
   }
 
-  const handleDialogOpen = () => {
+  const handleDialogEditCustomerOpen = (customer) => {
+    setIsEditMode(true);
+    setCurrentCustomer(customer);
+    setNewCustomer(customer);
     setDialogOpen(true);
   }
 
@@ -207,8 +243,6 @@ const CustomersPage = () => {
       }
     }
   }
-
-
 
   // Table column headers
   const columnHeadersContent = () => {
@@ -265,7 +299,10 @@ const CustomersPage = () => {
       <TableRow key={index}>
         <TableCell>
           <IconButton onClick={() => handleDeleteCustomer(customer)}>
-            <DeleteIcon className={classes.deleteIcon} />
+            <DeleteIcon className={classes.actionIcon} />
+          </IconButton>
+          <IconButton onClick={() => handleDialogEditCustomerOpen(customer)}>
+            <EditIcon className={classes.actionIcon} />
           </IconButton>
         </TableCell>
         <TableCell>{customer.firstname}</TableCell>
@@ -301,56 +338,79 @@ const CustomersPage = () => {
     ))
   }
 
-  // Dialog content
-  const dialogContent = () => {
-    return (
-      <Dialog open={dialogOpen} onClose={handleDialogClose}>
-        <form onSubmit={handleAddCustomer}>
-          <DialogTitle>Add New Customer</DialogTitle>
-          <DialogContent>
-            <Grid container direction="column" spacing={2}>
-              {[{ field: 'firstname', type: 'text' },
-              { field: 'lastname', type: 'text' },
-              { field: 'email', type: 'email' },
-              { field: 'phone', type: 'text' },
-              { field: 'streetaddress', type: 'text' },
-              { field: 'postcode', type: 'text' },
-              { field: 'city', type: 'text' }]
-                .map(({ field, type }) => (
-                  <Grid item key={field} className={classes.dialogTextFieldContainer}>
-                    <TextField
-                      id={field}
-                      label={field.replace(/([A-Z])/g, ' $1').replace(/^\w/, (c) => c.toUpperCase())} // Converts camelCase to words with first letter capitalized
-                      type={type}
-                      required
-                      value={newCustomer[field]}
-                      onChange={handleDialogTextfieldChange}
-                      fullWidth
-                    />
-                  </Grid>
-                ))
-              }
-            </Grid>
-            <div className={classes.dialogButtons}>
-              <IconButton className={classes.dialogCloseButton} onClick={handleDialogClose}>
-                Close
-              </IconButton>
-              <IconButton className={classes.addCustomerButton} type="submit">
-                Add customer
-              </IconButton>
-            </div>
-          </DialogContent>
-        </form>
-      </Dialog>
-    )
-  }
+  // Dialog content for adding a new customer
+  const dialogAddCustomerContent = () => (
+    <Dialog open={dialogOpen} onClose={handleDialogClose}>
+      <form onSubmit={handleAddCustomer}>
+        <DialogTitle>Add New Customer</DialogTitle>
+        <DialogContent>
+          <Grid container direction="column" spacing={2}>
+            {Object.keys(newCustomer).map((field) => (
+              <Grid item key={field} className={classes.dialogTextFieldContainer}>
+                <TextField
+                  id={field}
+                  label={field.replace(/([A-Z])/g, ' $1').replace(/^\w/, (c) => c.toUpperCase())}
+                  type={field === 'email' ? 'email' : 'text'}
+                  required
+                  value={newCustomer[field]}
+                  onChange={handleDialogTextfieldChange}
+                  fullWidth
+                />
+              </Grid>
+            ))}
+          </Grid>
+          <div className={classes.dialogButtons}>
+            <IconButton className={classes.dialogCloseButton} onClick={handleDialogClose}>
+              Close
+            </IconButton>
+            <IconButton className={classes.addCustomerButton} type="submit">
+              Add Customer
+            </IconButton>
+          </div>
+        </DialogContent>
+      </form>
+    </Dialog>
+  );
+
+  // Dialog content for editing an existing customer
+  const dialogEditCustomerContent = () => (
+    <Dialog open={dialogOpen} onClose={handleDialogClose}>
+      <form onSubmit={handleUpdateCustomer}>
+        <DialogTitle>Edit Customer</DialogTitle>
+        <DialogContent>
+          <Grid container direction="column" spacing={2}>
+            {Object.keys(currentCustomer).filter(field => field !== 'id' && field !== '_links').map((field) => (
+              <Grid item key={field} className={classes.dialogTextFieldContainer}>
+                <TextField
+                  id={field}
+                  label={field.replace(/([A-Z])/g, ' $1').replace(/^\w/, (c) => c.toUpperCase())}
+                  type={field === 'email' ? 'email' : 'text'}
+                  required
+                  value={newCustomer[field]}
+                  onChange={handleDialogTextfieldChange}
+                  fullWidth
+                />
+              </Grid>
+            ))}
+          </Grid>
+          <div className={classes.dialogButtons}>
+            <IconButton className={classes.dialogCloseButton} onClick={handleDialogClose}>
+              Close
+            </IconButton>
+            <IconButton className={classes.addCustomerButton} type="submit">
+              Update Customer
+            </IconButton>
+          </div>
+        </DialogContent>
+      </form>
+    </Dialog>
+  );
 
 
   return (
     <Paper>
       <TableContainer className={classes.tableContainer}>
         <div style={{ display: 'flex', padding: '16px' }}>
-
           <h3>Customers</h3>
           <TextField
             className={classes.searchInput}
@@ -374,10 +434,10 @@ const CustomersPage = () => {
               ),
             }}
           />
-          <IconButton className={classes.diaglogAddCustomerButton} onClick={handleDialogOpen}>
+          <IconButton className={classes.diaglogAddCustomerButton} onClick={() => handleDialogAddCustomerOpen()}>
             <AddBoxIcon />
           </IconButton>
-          {dialogContent()}
+          {isEditMode ? dialogEditCustomerContent() : dialogAddCustomerContent()}
         </div>
         <Table className={classes.table} aria-label="simple table">
           {columnHeadersContent()}
@@ -400,3 +460,5 @@ const CustomersPage = () => {
 };
 
 export default CustomersPage;
+
+
