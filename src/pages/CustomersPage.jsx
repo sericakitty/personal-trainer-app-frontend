@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getAllCustomers } from "@/api/customers";
-import { addNewCustomer } from "@/api/customers";
+import { getAllCustomers, addNewCustomer, deleteCustomer } from "@/api/customers";
 import { makeStyles } from '@material-ui/core/styles';
 import { Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, TextField, IconButton, InputAdornment, Dialog, DialogTitle, DialogContent, Grid } from '@material-ui/core';
 import SearchIcon from '@mui/icons-material/Search';
@@ -8,6 +7,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import ArrowDropUpIcon from '@mui/icons-material/ArrowDropUp';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import AddBoxIcon from '@mui/icons-material/AddBox';
+import DeleteIcon from '@mui/icons-material/Delete';
 
 const useStyles = makeStyles({
   table: {
@@ -55,6 +55,9 @@ const useStyles = makeStyles({
   dialogTextFieldContainer: {
     marginTop: 12, // Adjust the top margin for spacing between text fields
   },
+  deleteIcon: {
+    color: 'black',
+  }
 });
 
 const CustomersPage = () => {
@@ -77,12 +80,26 @@ const CustomersPage = () => {
     city: ''
   });
 
+  const handleGetAllCustomers = async () => {
+    try {
+      const data = await getAllCustomers();
+      if (data) {
+        data.forEach((customer) => {
+          customer.id = parseInt(customer._links.customer.href.split('/').pop());
+        });
+        setCustomers(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch customers:', error);
+      alert('Failed to load customer data');
+    }
+  }
+
   // Fetch all customers
   useEffect(() => {
     const fetchCustomers = async () => {
-      const data = await getAllCustomers();
-      setCustomers(data);
-    };
+      await handleGetAllCustomers();
+    }
 
     fetchCustomers();
   }, []);
@@ -96,11 +113,11 @@ const CustomersPage = () => {
     setPage(0);
   };
 
-  const handleSearch = (event) => {
+  const handleSearchInput = (event) => {
     setSearch(event.target.value);
   };
 
-  const handleClearSearch = () => {
+  const handleClearSearchInput = () => {
     setSearch('');
   };
 
@@ -128,10 +145,13 @@ const CustomersPage = () => {
 
     // Validate new customer fields
     if (newCustomer.firstname !== '' && newCustomer.lastname !== '' && newCustomer.email !== '' && newCustomer.phone !== '' && newCustomer.streetaddress !== '' && newCustomer.postcode !== '' && newCustomer.city !== '') {
-      await addNewCustomer(newCustomer);
-      resetDialog();
-      const data = await getAllCustomers();
-      setCustomers(data);
+      const response = await addNewCustomer(newCustomer);
+      if (response) { 
+        resetDialog();
+        await handleGetAllCustomers(); // Fetch all customers after adding a new customer
+      } else {
+        alert('Failed to add new customer');
+      }
     }
   };
 
@@ -159,12 +179,33 @@ const CustomersPage = () => {
   }
 
 
-  const handleChange = (e) => {
+  const handleDialogTextfieldChange = (e) => {
     const { id, value } = e.target;
     setNewCustomer(prevState => ({
       ...prevState,
       [id]: value
     }));
+  }
+
+  // Handle deleting a customer
+  const handleDeleteCustomer = async (customer) => {
+    if (!customer.id) return;
+    if (window.confirm(`Are you sure you want to delete ${customer.firstname} ${customer.lastname}?`)) {
+      const response = await deleteCustomer(customer.id);
+      if (response) {
+
+        const updatedCustomers = customers.filter(c => c.id !== customer.id);
+        setCustomers(updatedCustomers);
+
+        // calculate the number of pages after deleting a customer
+        const numberOfPages = Math.ceil(updatedCustomers.length / rowsPerPage);
+        if (page >= numberOfPages && page > 0) {
+          setPage(numberOfPages - 1);  // update the page number if the current page is greater than the number of pages
+        }
+      } else {
+        alert('Failed to delete customer');
+      }
+    }
   }
 
 
@@ -174,6 +215,9 @@ const CustomersPage = () => {
     return (
       <TableHead>
         <TableRow>
+          <TableCell>
+            Actions
+          </TableCell>
           <TableCell>
             <IconButton
               className={classes.sortingHeader} disableRipple onClick={() => handleColumnSort('firstname')}>
@@ -215,10 +259,15 @@ const CustomersPage = () => {
     );
   }
 
-  // Table rows
-  const normalCustomersContent = () => {
-    return customers.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((customer, index) => ( // Slice the array to display only the current page
+  // Table row content
+  const customerContent = (customer, index) => {
+    return (
       <TableRow key={index}>
+        <TableCell>
+          <IconButton onClick={() => handleDeleteCustomer(customer)}>
+            <DeleteIcon className={classes.deleteIcon} />
+          </IconButton>
+        </TableCell>
         <TableCell>{customer.firstname}</TableCell>
         <TableCell>{customer.lastname}</TableCell>
         <TableCell>{customer.email}</TableCell>
@@ -227,6 +276,13 @@ const CustomersPage = () => {
         <TableCell>{customer.postcode}</TableCell>
         <TableCell>{customer.city}</TableCell>
       </TableRow>
+    );
+  }
+
+  // Table rows without search filter
+  const normalCustomersContent = () => {
+    return customers.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((customer, index) => (
+      customerContent(customer, index)
     ))
   }
 
@@ -240,16 +296,8 @@ const CustomersPage = () => {
         customer.streetaddress.toLowerCase().includes(searchInput.toLowerCase()) ||
         customer.postcode.toLowerCase().includes(searchInput.toLowerCase()) ||
         customer.city.toLowerCase().includes(searchInput.toLowerCase());
-    }).map((customer, index) => ( // Map through filtered customers
-      <TableRow key={index}>
-        <TableCell>{customer.firstname}</TableCell>
-        <TableCell>{customer.lastname}</TableCell>
-        <TableCell>{customer.email}</TableCell>
-        <TableCell>{customer.phone}</TableCell>
-        <TableCell>{customer.streetaddress}</TableCell>
-        <TableCell>{customer.postcode}</TableCell>
-        <TableCell>{customer.city}</TableCell>
-      </TableRow>
+    }).map((customer, index) => (
+      customerContent(customer, index)
     ))
   }
 
@@ -276,7 +324,7 @@ const CustomersPage = () => {
                       type={type}
                       required
                       value={newCustomer[field]}
-                      onChange={handleChange}
+                      onChange={handleDialogTextfieldChange}
                       fullWidth
                     />
                   </Grid>
@@ -310,7 +358,7 @@ const CustomersPage = () => {
             size="small"
             placeholder="Search"
             value={searchInput}
-            onChange={handleSearch}
+            onChange={handleSearchInput}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -319,7 +367,7 @@ const CustomersPage = () => {
               ),
               endAdornment: (
                 <InputAdornment position="end">
-                  <IconButton onClick={handleClearSearch} >
+                  <IconButton onClick={handleClearSearchInput} >
                     <CloseIcon />
                   </IconButton>
                 </InputAdornment>
@@ -339,7 +387,7 @@ const CustomersPage = () => {
         </Table>
       </TableContainer>
       <TablePagination
-        rowsPerPageOptions={[5, 10, 25]}
+        rowsPerPageOptions={[5, 10, 25, 50, 100]}
         component="div"
         count={customers.length}
         rowsPerPage={rowsPerPage}
