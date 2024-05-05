@@ -199,6 +199,7 @@ const CustomersPage = () => {
       showAlert('Failed to add customer', 'error');
     }
     handleDialogClose();
+    handleDialogReset();
   }
 
   // Update an existing customer
@@ -218,6 +219,7 @@ const CustomersPage = () => {
       showAlert('Failed to update customer', 'error');
     }
     handleDialogClose();
+    handleDialogReset();
   }
 
 
@@ -225,7 +227,7 @@ const CustomersPage = () => {
   const handleDialogOpen = (mode, customer = null) => {
     setDialogOpen(true);
     setDialogMode(mode);
-    if ((mode === 'addCustomer' || mode === 'editCustomer') && customer) {
+    if ((mode === 'addTraining' || mode === 'editCustomer') && customer) {
       setNewCustomer(customer);
       setCurrentCustomer(customer);
     }
@@ -235,12 +237,11 @@ const CustomersPage = () => {
   const handleDialogClose = () => {
     setDialogMode(null);
     setDialogOpen(false);
-    setCurrentCustomer(null);
-    resetDialog();
+    handleDialogReset();
   };
 
   // Reset fields for customer and training dialogs
-  const resetDialog = () => {
+  const handleDialogReset = () => {
     setNewCustomer({
       firstname: '',
       lastname: '',
@@ -256,6 +257,7 @@ const CustomersPage = () => {
       duration: '',
       customer: ''
     });
+    setCurrentCustomer(null);
   };
 
   // Handle textfield change in the dialog
@@ -305,6 +307,7 @@ const CustomersPage = () => {
       showAlert('Failed to add training', 'error');
     }
     handleDialogClose();
+    handleDialogReset();
   }
 
 
