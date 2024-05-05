@@ -39,7 +39,6 @@ const useStyles = makeStyles({
   },
   dialogCloseButton: {
     color: 'red',
-    marginRight: 'auto',
     border: '1px solid red !important',
     borderRadius: '5px !important',
     marginRight: '5px',
@@ -129,7 +128,6 @@ const CustomersPage = () => {
 
     // Validate new customer fields
     if (newCustomer.firstname !== '' && newCustomer.lastname !== '' && newCustomer.email !== '' && newCustomer.phone !== '' && newCustomer.streetaddress !== '' && newCustomer.postcode !== '' && newCustomer.city !== '') {
-      return;
       await addNewCustomer(newCustomer);
       resetDialog();
       const data = await getAllCustomers();
