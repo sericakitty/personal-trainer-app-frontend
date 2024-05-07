@@ -12,6 +12,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import dayjs from 'dayjs';
 import Alert from '@mui/material/Alert';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
 
 const useStyles = makeStyles({
   table: {
@@ -77,6 +78,17 @@ const useStyles = makeStyles({
       marginBottom: '20px !important',
     },
   },
+  exportButton: {
+    fontSize: '18px !important',
+    marginRight: 'auto !important',
+    '&:focus': { // Remove hover effect
+      outline: 'none',
+      border: 'none',
+    },
+    '&:hover': { // Remove hover effect
+      backgroundColor: 'transparent',
+    },
+  }
 });
 
 const CustomersPage = () => {
@@ -310,6 +322,45 @@ const CustomersPage = () => {
     handleDialogReset();
   }
 
+  // Export customers data to CSV
+  const handleExportDataToCSV = () => {
+    if (!window.confirm('Do you want to export customers data to CSV?')) return;
+
+    // Prepare CSV data
+    const csvData = customers.map((customer) => {
+      return {
+        'First name': customer.firstname,
+        'Last name': customer.lastname,
+        'Email': customer.email,
+        'Phone': customer.phone,
+        'Street address': customer.streetaddress,
+        'Postcode': customer.postcode,
+        'City': customer.city
+      }
+    });
+
+    // Convert CSV data to CSV content
+    const csvFields = Object.keys(csvData[0]);
+    // Create an array of arrays for CSV values
+    const csvValues = csvData.map((customer) => csvFields.map((field) => customer[field]));
+    // Create CSV content
+    const csvContent = [
+      csvFields.join(','),
+      ...csvValues.map(row => row.join(','))
+    ].join('\n');
+
+    // Create a Blob object and download the CSV file
+    const blob = new Blob([csvContent]);
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const fileName = `download customers data ${dayjs().format('YYYY-MM-DD HH:mm:ss')}.csv`;
+    link.setAttribute('download', fileName);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
 
   // Table column headers
   const columnHeadersContent = () => (
@@ -526,6 +577,9 @@ const CustomersPage = () => {
       <TableContainer className={classes.tableContainer}>
         <div style={{ display: 'flex', padding: '16px' }}>
           <h3>Customers</h3>
+          <IconButton className={classes.exportButton} onClick={() => handleExportDataToCSV()}>
+            <FileDownloadIcon className={classes.actionIcon}/>
+          </IconButton>
           <TextField
             className={classes.searchInput}
             variant="standard"
