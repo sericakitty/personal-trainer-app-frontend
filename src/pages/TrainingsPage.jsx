@@ -80,9 +80,9 @@ const TrainingsPage = () => {
     });
   };
 
-  // Format date object to DD.MM.YYYY HH:MM AM/PM
+  // Format date object to DD.MM.YYYY hh:mm AM/PM
   const handleDateObject = (date) => {
-    return dayjs(date).format('DD.MM.YYYY HH:mm A');
+    return dayjs(date).format('DD.MM.YYYY hh:mm A');
   }  
   
   const columnHeaders = () => {
