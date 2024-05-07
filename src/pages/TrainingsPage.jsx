@@ -109,7 +109,7 @@ const TrainingsPage = () => {
   // Format date object to DD.MM.YYYY HH:MM AM/PM
   const handleDateObject = (date) => {
     // display date in UTC as it is stored in the database
-    return dayjs.utc(date).format('DD.MM.YYYY HH:mm A');
+    return dayjs.utc(date).format('DD.MM.YYYY hh:mm A');
   }  
 
   // Delete training by ID
