@@ -5,6 +5,7 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ContactsIcon from '@mui/icons-material/Contacts';
 import DirectionsRunIcon from '@mui/icons-material/DirectionsRun';
 import EventIcon from '@mui/icons-material/Event';
+import EqualizerIcon from '@mui/icons-material/Equalizer';
 import { Link as RouterLink } from 'react-router-dom';
 
 const drawerWidth = 180;
@@ -135,6 +136,11 @@ const TheNavbar = () => {
               text: 'Calendar',
               icon: <EventIcon />,
               link: '/calendar'
+            },
+            {
+              text: 'Statistics',
+              icon: <EqualizerIcon />,
+              link: '/statistics'
             }
           ].map((item) => (
             <ListItem button key={item.text}>
